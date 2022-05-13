@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "./CharacterType.sol";
 import "./ERC3664/ERC3664.sol";
 
 contract Character is ERC3664, ERC721Enumerable, Ownable {
@@ -19,28 +20,18 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
             // interfaceId == type(ISynthetic).interfaceId ||
             super.supportsInterface(interfaceId);
     }
-
-    uint256 public constant CHARACTER_NFT_NUMBER = 1;
-    uint256 public constant WEAPON_NFT_NUMBER = 2;
-    uint256 public constant ARMOR_NFT_NUMBER = 3;
-
+    
     string private _name = "Character";
     string private _symbol = "CHR";
 
     bool private _isSalesActive;
-
     uint256 public _totalSupply = 8000;
 
-    struct SynthesizedToken {
-        address owner;
-        uint256 id;
-    }
-
     // mainToken => SynthesizedToken
-    mapping(uint256 => SynthesizedToken[]) public synthesizedTokens;
+    mapping(uint256 => CharacterType.SynthesizedToken[]) public synthesizedTokens;
 
     constructor() ERC721(_name, _symbol) Ownable() {
-        _mint(CHARACTER_NFT_NUMBER, "CHARACTER", "character", "");
+        _mint(CharacterType.CHARACTER_NFT_NUMBER, "CHARACTER", "character", "");
         _isSalesActive = true;
     }
 
@@ -57,7 +48,7 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
         view
         returns (uint256[] memory)
     {
-        SynthesizedToken[] storage tokens = synthesizedTokens[tokenId];
+        CharacterType.SynthesizedToken[] storage tokens = synthesizedTokens[tokenId];
         uint256[] memory subs = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             subs[i] = tokens[i].id;
@@ -68,7 +59,7 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
     function combine(uint256 tokenId, uint256[] calldata subIds) public {
         require(ownerOf(tokenId) == _msgSender(), "caller is not token owner");
         require(
-            primaryAttributeOf(tokenId) == CHARACTER_NFT_NUMBER,
+            primaryAttributeOf(tokenId) == CharacterType.CHARACTER_NFT_NUMBER,
             "only support primary token been combine"
         );
 
@@ -79,7 +70,7 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
             );
             uint256 nft_attr = primaryAttributeOf(subIds[i]);
             require(
-                nft_attr != CHARACTER_NFT_NUMBER,
+                nft_attr != CharacterType.CHARACTER_NFT_NUMBER,
                 "not support combine between primary token"
             );
             for (uint256 j = 0; j < synthesizedTokens[tokenId].length; j++) {
@@ -89,9 +80,10 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
                     "duplicate sub token type"
                 );
             }
+
             _transfer(_msgSender(), address(this), subIds[i]);
             synthesizedTokens[tokenId].push(
-                SynthesizedToken(_msgSender(), subIds[i])
+                CharacterType.SynthesizedToken(_msgSender(), subIds[i])
             );
         }
     }
@@ -102,11 +94,11 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
             "caller is not token owner nor approved"
         );
         require(
-            primaryAttributeOf(tokenId) == CHARACTER_NFT_NUMBER,
+            primaryAttributeOf(tokenId) == CharacterType.CHARACTER_NFT_NUMBER,
             "only support primary token separate"
         );
 
-        SynthesizedToken[] storage subs = synthesizedTokens[tokenId];
+        CharacterType.SynthesizedToken[] storage subs = synthesizedTokens[tokenId];
         require(subs.length > 0, "not synthesized token");
         for (uint256 i = 0; i < subs.length; i++) {
             _transfer(address(this), subs[i].owner, subs[i].id);
@@ -120,12 +112,12 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
             "caller is not token owner nor approved"
         );
         require(
-            primaryAttributeOf(tokenId) == CHARACTER_NFT_NUMBER,
+            primaryAttributeOf(tokenId) == CharacterType.CHARACTER_NFT_NUMBER,
             "only support primary token separate"
         );
 
         uint256 idx = findByValue(synthesizedTokens[tokenId], subId);
-        SynthesizedToken storage token = synthesizedTokens[tokenId][idx];
+        CharacterType.SynthesizedToken storage token = synthesizedTokens[tokenId][idx];
         _transfer(address(this), token.owner, token.id);
         removeAtIndex(synthesizedTokens[tokenId], idx);
     }
@@ -137,8 +129,8 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, tokenId);
 
-        if (primaryAttributeOf(tokenId) == CHARACTER_NFT_NUMBER) {
-            SynthesizedToken[] storage subs = synthesizedTokens[tokenId];
+        if (primaryAttributeOf(tokenId) == CharacterType.CHARACTER_NFT_NUMBER) {
+            CharacterType.SynthesizedToken[] storage subs = synthesizedTokens[tokenId];
             for (uint256 i = 0; i < subs.length; i++) {
                 subs[i].owner = to;
             }
@@ -146,12 +138,13 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
     }
 
     function _afterTokenMint(uint256 tokenId) internal virtual {
-        attach(tokenId, CHARACTER_NFT_NUMBER, 1, bytes("character"), true);
+        attach(tokenId, CharacterType.CHARACTER_NFT_NUMBER, 1, bytes("character"), true);
         uint256 id = _totalSupply + (tokenId - 1) * 2 + 1;
+
         // WEAPON
-        mintSubToken(WEAPON_NFT_NUMBER, tokenId, id);
+        mintSubToken(CharacterType.WEAPON_NFT_NUMBER, tokenId, id);
         // ARMOR
-        mintSubToken(ARMOR_NFT_NUMBER, tokenId, id + 1);
+        mintSubToken(CharacterType.ARMOR_NFT_NUMBER, tokenId, id + 1);
     }
 
     function mintSubToken(
@@ -161,17 +154,10 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
     ) internal virtual {
         _mint(address(this), subId);
         attach(subId, attr, 1, bytes(""), true);
-        synthesizedTokens[tokenId].push(SynthesizedToken(_msgSender(), subId));
+        synthesizedTokens[tokenId].push(CharacterType.SynthesizedToken(_msgSender(), subId));
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {}
-
-    function findByValue(SynthesizedToken[] storage values, uint256 value)
+    function findByValue(CharacterType.SynthesizedToken[] storage values, uint256 value)
         internal
         view
         returns (uint256)
@@ -183,7 +169,7 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
         return i;
     }
 
-    function removeAtIndex(SynthesizedToken[] storage values, uint256 index)
+    function removeAtIndex(CharacterType.SynthesizedToken[] storage values, uint256 index)
         internal
     {
         uint256 max = values.length;
