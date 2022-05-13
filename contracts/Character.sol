@@ -29,9 +29,6 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
     bool private _isSalesActive;
     uint256 public constant Supply = 8000;
 
-    // mainToken => SynthesizedToken
-    // mapping(uint256 => SynthesizedToken[]) public synthesizedTokens;
-
     constructor() ERC721(_name, _symbol) ERC3664("") {
         _mint(CHARACTER_NFT_NUMBER, "CHARACTER", "character", "");
         _mint(WEAPON_NFT_NUMBER, "CHARACTER", "character", ""); 
@@ -159,7 +156,6 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
     ) internal virtual {
         _mint(address(this), subId);
         attachWithText(subId, attr, 1, bytes(""));
-        //synthesizedTokens[tokenId].push(SynthesizedToken(_msgSender(), subId));
         recordSynthesized(_msgSender(), tokenId, subId);
     }
 
