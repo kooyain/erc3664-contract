@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./ERC3664/ERC3664.sol";
+import "./ERC3664/Synthetic/ERC3664Synthetic.sol";
 
-contract Character is ERC3664, ERC721Enumerable, Ownable {
+contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -19,28 +19,20 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
             // interfaceId == type(ISynthetic).interfaceId ||
             super.supportsInterface(interfaceId);
     }
-
     uint256 public constant CHARACTER_NFT_NUMBER = 1;
     uint256 public constant WEAPON_NFT_NUMBER = 2;
-    uint256 public constant ARMOR_NFT_NUMBER = 3;
+    uint256 public constant ARMOR_NFT_NUMBER = 3; 
 
     string private _name = "Character";
     string private _symbol = "CHR";
 
     bool private _isSalesActive;
+    uint256 public constant Supply = 8000;
 
-    uint256 public _totalSupply = 8000;
-
-    struct SynthesizedToken {
-        address owner;
-        uint256 id;
-    }
-
-    // mainToken => SynthesizedToken
-    mapping(uint256 => SynthesizedToken[]) public synthesizedTokens;
-
-    constructor() ERC721(_name, _symbol) Ownable() {
+    constructor() ERC721(_name, _symbol) ERC3664("") {
         _mint(CHARACTER_NFT_NUMBER, "CHARACTER", "character", "");
+        _mint(WEAPON_NFT_NUMBER, "CHARACTER", "character", ""); 
+        _mint(ARMOR_NFT_NUMBER, "CHARACTER", "character", "");
         _isSalesActive = true;
     }
 
@@ -89,6 +81,7 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
                     "duplicate sub token type"
                 );
             }
+
             _transfer(_msgSender(), address(this), subIds[i]);
             synthesizedTokens[tokenId].push(
                 SynthesizedToken(_msgSender(), subIds[i])
@@ -146,10 +139,12 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
     }
 
     function _afterTokenMint(uint256 tokenId) internal virtual {
-        attach(tokenId, CHARACTER_NFT_NUMBER, 1, bytes("character"), true);
-        uint256 id = _totalSupply + (tokenId - 1) * 2 + 1;
+        attachWithText(tokenId, CHARACTER_NFT_NUMBER, 1, bytes("character"));
+        uint256 id = Supply + (tokenId - 1) * 2 + 1;
+
         // WEAPON
         mintSubToken(WEAPON_NFT_NUMBER, tokenId, id);
+
         // ARMOR
         mintSubToken(ARMOR_NFT_NUMBER, tokenId, id + 1);
     }
@@ -160,16 +155,9 @@ contract Character is ERC3664, ERC721Enumerable, Ownable {
         uint256 subId
     ) internal virtual {
         _mint(address(this), subId);
-        attach(subId, attr, 1, bytes(""), true);
-        synthesizedTokens[tokenId].push(SynthesizedToken(_msgSender(), subId));
+        attachWithText(subId, attr, 1, bytes(""));
+        recordSynthesized(_msgSender(), tokenId, subId);
     }
-
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {}
 
     function findByValue(SynthesizedToken[] storage values, uint256 value)
         internal
