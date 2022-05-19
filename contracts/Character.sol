@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./ERC3664/Synthetic/ERC3664Synthetic.sol";
 
-contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
+contract Character is  ERC721Enumerable, ERC3664Synthetic, Ownable {
     function supportsInterface(bytes4 interfaceId)
         public
         view
@@ -21,7 +21,7 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
     }
     uint256 public constant CHARACTER_NFT_NUMBER = 1;
     uint256 public constant WEAPON_NFT_NUMBER = 2;
-    uint256 public constant ARMOR_NFT_NUMBER = 3; 
+    uint256 public constant ARMOR_NFT_NUMBER = 3;
 
     string private _name = "Character";
     string private _symbol = "CHR";
@@ -49,7 +49,7 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
         view
         returns (uint256[] memory)
     {
-        SynthesizedToken[] storage tokens = synthesizedTokens[tokenId];
+        SynthesizedToken[] memory tokens = synthesizedTokens[tokenId];
         uint256[] memory subs = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             subs[i] = tokens[i].id;
@@ -99,7 +99,7 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
             "only support primary token separate"
         );
 
-        SynthesizedToken[] storage subs = synthesizedTokens[tokenId];
+        SynthesizedToken[] memory subs = synthesizedTokens[tokenId];
         require(subs.length > 0, "not synthesized token");
         for (uint256 i = 0; i < subs.length; i++) {
             _transfer(address(this), subs[i].owner, subs[i].id);
@@ -139,7 +139,8 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
     }
 
     function _afterTokenMint(uint256 tokenId) internal virtual {
-        attachWithText(tokenId, CHARACTER_NFT_NUMBER, 1, bytes("character"));
+        attachWithText(tokenId, CHARACTER_NFT_NUMBER, 1, bytes("Character"));
+        setPrimaryAttribute(tokenId, CHARACTER_NFT_NUMBER);
         uint256 id = Supply + (tokenId - 1) * 2 + 1;
 
         // WEAPON
@@ -156,6 +157,7 @@ contract Character is  ERC721Enumerable,ERC3664Synthetic,Ownable {
     ) internal virtual {
         _mint(address(this), subId);
         attachWithText(subId, attr, 1, bytes(""));
+        setPrimaryAttribute(subId, attr);
         recordSynthesized(_msgSender(), tokenId, subId);
     }
 
